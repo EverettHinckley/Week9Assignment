@@ -1,6 +1,9 @@
 package edu.farmingdale.datastoredemo.ui
 
+import android.util.Log
+import android.widget.Switch
 import android.widget.Toast
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -28,8 +31,13 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
@@ -47,25 +55,45 @@ import edu.farmingdale.datastoredemo.data.local.LocalEmojiData
 /*
  * Screen level composable
  */
+
+//Storage for emojis and their corresponding descriptions
+var Emojis=HashMap<String, String>()
+
 @Composable
 fun EmojiReleaseApp(
     emojiViewModel: EmojiScreenViewModel = viewModel(
         factory = EmojiScreenViewModel.Factory
     )
 ) {
+    addEmojis()
     EmojiScreen(
+        vm=emojiViewModel,
         uiState = emojiViewModel.uiState.collectAsState().value,
+        themeState = emojiViewModel.themeState.collectAsState().value,
         selectLayout = emojiViewModel::selectLayout,
+        selectTheme=emojiViewModel::selectTheme,
     )
+}
+//Add data to the HashMap
+fun addEmojis(){
+        var i=0
+        for (item in LocalEmojiData.EmojiList) {
+            Emojis.put(item, LocalEmojiData.EmojiTitleList.get(i))
+            i++
+        }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EmojiScreen(
+    vm: EmojiScreenViewModel,
     uiState: EmojiReleaseUiState,
-    selectLayout: (Boolean) -> Unit
+    themeState: EmojiReleaseThemeState,
+    selectLayout: (Boolean) -> Unit,
+    selectTheme: (Boolean) -> Unit
 ) {
     val isLinearLayout = uiState.isLinearLayout
+    val isDarkTheme=themeState.isDarkTheme
     Scaffold(
         topBar = {
             TopAppBar(
@@ -82,15 +110,19 @@ private fun EmojiScreen(
                             tint = MaterialTheme.colorScheme.onBackground
                         )
                     }
-
-
+                    //This add a switch that changes to dark mode when clicked on and
+                    //turns back to light mode when turned off
+                    Switch(checked = isDarkTheme, onCheckedChange = {selectTheme(!isDarkTheme)})
                 },
                 colors = TopAppBarDefaults.largeTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.inversePrimary
+                    //Changes app bar background color to dark theme
+                    containerColor = if(isDarkTheme) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.inversePrimary
+                     //containerColor = vm.appBarColor
                 )
             )
         }
-    ) { innerPadding ->
+        //Changes background color to dark theme
+    , containerColor = themeState.backgroundColor) { innerPadding ->
         val modifier = Modifier
             .padding(
                 top = dimensionResource(R.dimen.padding_medium),
@@ -100,12 +132,14 @@ private fun EmojiScreen(
         if (isLinearLayout) {
             EmojiReleaseLinearLayout(
                 modifier = modifier.fillMaxWidth(),
-                contentPadding = innerPadding
+                contentPadding = innerPadding,
+                isDarkTheme=isDarkTheme
             )
         } else {
             EmojiReleaseGridLayout(
                 modifier = modifier,
                 contentPadding = innerPadding,
+                isDarkTheme=isDarkTheme
             )
         }
     }
@@ -114,7 +148,8 @@ private fun EmojiScreen(
 @Composable
 fun EmojiReleaseLinearLayout(
     modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(0.dp)
+    contentPadding: PaddingValues = PaddingValues(0.dp),
+    isDarkTheme:Boolean
 ) {
     val cntxt = LocalContext.current
     LazyColumn(
@@ -128,9 +163,12 @@ fun EmojiReleaseLinearLayout(
         ) { e ->
             Card(
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primary
+                    //Changes emoji background color to dark theme
+                    containerColor = if(isDarkTheme) MaterialTheme.colorScheme.inversePrimary else MaterialTheme.colorScheme.primary
                 ),
-                shape = MaterialTheme.shapes.medium
+                shape = MaterialTheme.shapes.medium,
+                //This shows a description of the emoji when it is clicked on
+                modifier=Modifier.clickable { Toast.makeText(cntxt, Emojis.get(e), Toast.LENGTH_SHORT).show()}
             ) {
                     Text(
                         text = e, fontSize = 50.sp,
@@ -149,8 +187,10 @@ fun EmojiReleaseLinearLayout(
 @Composable
 fun EmojiReleaseGridLayout(
     modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(0.dp)
+    contentPadding: PaddingValues = PaddingValues(0.dp),
+    isDarkTheme: Boolean
 ) {
+    val cntxt = LocalContext.current
     LazyVerticalGrid(
         modifier = modifier,
         columns = GridCells.Fixed(3),
@@ -164,10 +204,11 @@ fun EmojiReleaseGridLayout(
         ) { e ->
             Card(
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primary
+                    containerColor = if(isDarkTheme) MaterialTheme.colorScheme.inversePrimary else MaterialTheme.colorScheme.primary
                 ),
-                modifier = Modifier.height(110.dp),
-                shape = MaterialTheme.shapes.medium
+                modifier = Modifier.height(110.dp).clickable { Toast.makeText(cntxt, Emojis.get(e), Toast.LENGTH_SHORT).show()},
+                shape = MaterialTheme.shapes.medium,
+                //This shows a description of the emoji when it is clicked on
             ) {
                 Text(
                     text = e, fontSize = 50.sp,

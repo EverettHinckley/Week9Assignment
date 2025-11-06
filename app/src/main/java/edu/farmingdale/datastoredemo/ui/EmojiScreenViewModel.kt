@@ -1,5 +1,12 @@
 package edu.farmingdale.datastoredemo.ui
 
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
@@ -31,6 +38,18 @@ class EmojiScreenViewModel(
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = EmojiReleaseUiState()
         )
+    //Changes theme
+    val themeState: StateFlow<EmojiReleaseThemeState> =
+        userPreferencesRepository.isDarkTheme.map { isDarkTheme ->
+            EmojiReleaseThemeState(isDarkTheme)
+        }.stateIn(
+            scope = viewModelScope,
+            // Flow is set to emits value for when app is on the foreground
+            // 5 seconds stop delay is added to ensure it flows continuously
+            // for cases such as configuration change
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = EmojiReleaseThemeState()
+        )
 
     /*
      * [selectLayout] change the layout and icons accordingly and
@@ -41,7 +60,12 @@ class EmojiScreenViewModel(
             userPreferencesRepository.saveLayoutPreference(isLinearLayout)
         }
     }
-
+    //This changes the theme to dark/light mode and saves in datastore
+    fun selectTheme(isDarkTheme: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.saveThemePreference(isDarkTheme)
+        }
+    }
 
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
@@ -62,4 +86,9 @@ data class EmojiReleaseUiState(
         if (isLinearLayout) R.string.grid_layout_toggle else R.string.linear_layout_toggle,
     val toggleIcon: Int =
         if (isLinearLayout) R.drawable.ic_grid_layout else R.drawable.ic_linear_layout
+)
+//Contains data for theme changes
+data class EmojiReleaseThemeState(
+    val isDarkTheme: Boolean = false,
+    val backgroundColor:Color=if(isDarkTheme) Color.Black else Color.White,
 )
